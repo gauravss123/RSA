@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Input: n > 3, an odd integer to be tested for primality;
  * Input: k, a parameter that determines the accuracy of the test
  * Output: composite if n is composite, otherwise probably prime
@@ -24,13 +24,35 @@ using System.Web.UI.WebControls;
 
 public partial class _Default : System.Web.UI.Page
 {
+    public struct Dval
+    {
+   
+        public BigInteger j;
+        public BigInteger k;
+
+        public Dval(Dval a)
+        {
+            this.j = a.j;
+            this.k = a.k;
+        }
+
+        public Dval(BigInteger j, BigInteger k)
+        {
+            this.j = j;
+            this.k = k;
+        }
+    };
+
+    
+
     int[] odd_number = new int[] { 1, 3, 5, 7, 9 };
     BigInteger p = new BigInteger();
     BigInteger q = new BigInteger();
     BigInteger N = new BigInteger();
     BigInteger phi = new BigInteger();
-    BigInteger e = new BigInteger();
+    BigInteger e_global = new BigInteger();
     BigInteger d = new BigInteger();
+    
     int[] first_1000_prime = new int[] { 2,    3,      5,     7,     11,     13,
         17,     19,     23,     29,      31,     37,     41,     43,     47,     
         53,     59,     61,     67,     71,      73,     79,     83,     89,     
@@ -485,6 +507,31 @@ public partial class _Default : System.Web.UI.Page
         }
         return true;
     }
+    
+    protected Dval find_private(BigInteger a , BigInteger b )
+    {
+        /*Input: Nonnegative integers a and b (not both zero).
+    Output: d = gcd( a, b ), integers  j, k where d = j · a + k· b
+	if b = 0 then
+		return ( a, 1 , 0)
+	r ← a mod b
+	Let q be the integer such that a = q · b + r (that is, q = ⌊ a / b ⌋).
+	(d, j, k ) ← ExtendedEuclidGCD ( b, r)
+	return (d, k, j−kq)*/
+        Dval return_val,temp;
+        if (b.Equals(0))
+        {
+            return_val = new Dval(BigInteger.One, BigInteger.Zero);
+            return return_val; 
+        }
+        BigInteger r,q1 = new BigInteger();
+        r = BigInteger.Remainder(a, b);
+        q1 = BigInteger.Divide(BigInteger.Subtract(a, r), b);
+        temp = new Dval(find_private(b,r));
+        return_val = new Dval(temp.k,BigInteger.Subtract(temp.j,BigInteger.Multiply(temp.k,q1)));
+        
+        return return_val;
+}
 
     protected void find_exponent(BigInteger phi)
     {
@@ -493,8 +540,9 @@ public partial class _Default : System.Web.UI.Page
         int exponent_compare = phi.CompareTo(prime);
         int ind = Array.BinarySearch(first_1000_prime, 65537);
         int size_array = first_1000_prime.Length;
+        e_global= BigInteger.MinusOne;
         if (gcd==1 && exponent_compare>0)
-            e = new BigInteger(65537);
+            e_global = prime;
         else if (exponent_compare <= 0 )
         {
 
@@ -504,8 +552,11 @@ public partial class _Default : System.Web.UI.Page
                 gcd = (int)BigInteger.GreatestCommonDivisor(phi, prime);
                 exponent_compare = phi.CompareTo(prime);
                 if (gcd == 1 && exponent_compare > 0)
-                    e = new BigInteger(first_1000_prime[ind]);
-            }
+                    {
+                        e_global = BigInteger.Parse(first_1000_prime[ind].ToString());
+                        break;
+                    }
+                }
         }
         else
         {
@@ -516,7 +567,7 @@ public partial class _Default : System.Web.UI.Page
                 gcd = (int)BigInteger.GreatestCommonDivisor(phi, prime);
                 exponent_compare = phi.CompareTo(prime);
                 if (gcd == 1 && exponent_compare > 0)
-                    e = new BigInteger(first_1000_prime[ind]);
+                    e_global = BigInteger.Parse(first_1000_prime[ind].ToString());
             }
         }
     }
@@ -525,31 +576,40 @@ public partial class _Default : System.Web.UI.Page
         
         int size = Convert.ToInt16(Text1.Value.ToString());
         digits_no = Convert.ToInt16(((size / 2) - 1) * Math.Log10(2) + 1);
+        BigInteger max_value = BigInteger.Pow(BigInteger.Parse("2"), size / 2);
+        int i = 0; bool prime,equal;
         do
         {
             p = random_big(size / 2,true);
-        } while (!Prime_test(p));
+            //i = p.CompareTo(max_value);
+            prime = Prime_test(p);
+            bool j = true;
+        } while (!prime);// || (i>=0));
         do
         {
             q = random_big(size / 2,true);
-        } while (!Prime_test(q));
-
+            //i=q.CompareTo(max_value);
+            prime = Prime_test(q);
+            equal = q.Equals(p);
+            bool u = true;
+        } while (!prime || (equal == true));// || (i >= 0));
+        
         TextBox2.Text = p.ToString();
         TextBox1.Text = q.ToString();
 
         N = BigInteger.Multiply(p, q);
         phi = BigInteger.Add(p, q);
         phi = BigInteger.Add(phi, BigInteger.MinusOne);
-        phi = BigInteger.Add(N, phi);
+        phi = BigInteger.Subtract(N, phi);
 
+        TextBox1.Text += " " + phi.ToString();
         find_exponent(phi);
+        Dval private_key= new Dval(find_private(phi, e_global));
         
+        d = private_key.k;
+      
+        TextBox3.Text = d.ToString()+" "+e_global.ToString();
         
-        
-        
-        
-        //TextBox1.Text =  Prime_test(new BigInteger(Convert.ToInt32(Text1.Value.ToString()))).ToString();
-        //TextBox1.Text = ((a + b) / 2).ToString();  //p.ToString() + prim.ToString();
         
     }
 }
